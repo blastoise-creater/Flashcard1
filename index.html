@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcard App</title>
+  <style>
+    :root {
+      --primary-color: #4CAF50;
+      --secondary-color: #2196F3;
+      --accent-color: #FFC107;
+      --bg-color: #f0f2f5;
+      --card-front-bg: #fff;
+      --card-back-bg: #2c3e50;
+      --text-dark: #2c3e50;
+      --text-light: #ecf0f1;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--text-dark);
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: var(--text-dark);
+      text-align: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Flashcard Area */
+    .flashcard-container {
+      width: 100%;
+      height: 280px;
+      perspective: 1000px;
+      margin-bottom: 25px;
+      position: relative;
+      transition: all 0.4s ease;
+    }
+
+    .flashcard {
+      width: 100%;
+      height: 100%;
+      border-radius: 15px;
+      position: relative;
+      text-align: center;
+      transition: transform 0.6s ease-in-out;
+      transform-style: preserve-3d;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+    }
+
+    .flashcard.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 15px;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: 1.3em;
+      line-height: 1.5;
+      word-wrap: break-word;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--secondary-color) #ddd;
+    }
+
+    .flashcard-face::-webkit-scrollbar {
+      width: 6px;
+    }
+    .flashcard-face::-webkit-scrollbar-thumb {
+      background: var(--secondary-color);
+      border-radius: 6px;
+    }
+
+    .flashcard-front {
+      background: var(--card-front-bg);
+      color: var(--text-dark);
+    }
+
+    .flashcard-back {
+      background: var(--card-back-bg);
+      color: var(--text-light);
+      transform: rotateY(180deg);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      padding: 10px 18px;
+      font-size: 1em;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: var(--secondary-color);
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+    .controls button:hover {
+      transform: translateY(-2px);
+    }
+    #deleteBtn { background: #e74c3c; }
+    #deleteBtn:hover { background: #c0392b; }
+
+    /* Fullscreen mode */
+    .fullscreen {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 2000;
+      background: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    #fullscreenToggle {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      background: var(--primary-color);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: background 0.2s;
+    }
+    #fullscreenToggle:hover {
+      background: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>My Flashcard Deck</h1>
+
+    <!-- Flashcard Area -->
+    <div class="flashcard-container" id="flashcardContainer">
+      <div id="flashcard" class="flashcard">
+        <div id="flashcard-front" class="flashcard-face flashcard-front">
+          Click to flip!
+        </div>
+        <div id="flashcard-back" class="flashcard-face flashcard-back">
+          Add your first card below.
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="prevBtn">Prev</button>
+      <span id="cardCount">0/0</span>
+      <button id="nextBtn">Next</button>
+      <button id="deleteBtn">Delete</button>
+    </div>
+
+    <!-- Add New Cards -->
+    <div class="add-card-section">
+      <h2>Add New Flashcard</h2>
+      <textarea id="frontInput" placeholder="Front text"></textarea>
+      <textarea id="backInput" placeholder="Back text"></textarea>
+      <button id="addCardBtn">Add Card</button>
+    </div>
+
+    <!-- Fullscreen Button -->
+    <button id="fullscreenToggle">Fullscreen</button>
+  </div>
+
+  <script>
+    const flashcard = document.getElementById('flashcard');
+    const flashcardFront = document.getElementById('flashcard-front');
+    const flashcardBack = document.getElementById('flashcard-back');
+    const frontInput = document.getElementById('frontInput');
+    const backInput = document.getElementById('backInput');
+    const addCardBtn = document.getElementById('addCardBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const cardCountSpan = document.getElementById('cardCount');
+    const fullscreenToggle = document.getElementById('fullscreenToggle');
+    const flashcardContainer = document.getElementById('flashcardContainer');
+
+    let flashcards = [];
+    let currentCardIndex = 0;
+    let isFullscreen = false;
+
+    function saveFlashcards() {
+      localStorage.setItem('flashcards', JSON.stringify(flashcards));
+    }
+
+    function loadFlashcards() {
+      const saved = localStorage.getItem('flashcards');
+      if (saved) {
+        flashcards = JSON.parse(saved);
+        if (flashcards.length > 0) {
+          currentCardIndex = 0;
+          displayCard();
+        } else displayEmptyCard();
+      } else displayEmptyCard();
+    }
+
+    function displayCard() {
+      if (flashcards.length > 0) {
+        const card = flashcards[currentCardIndex];
+        flashcardFront.textContent = card.front;
+        flashcardBack.textContent = card.back;
+        flashcard.classList.remove('is-flipped');
+      }
+      updateCardCount();
+    }
+
+    function displayEmptyCard() {
+      flashcardFront.textContent = "No cards created yet.";
+      flashcardBack.textContent = "Add your first card below!";
+      flashcard.classList.remove('is-flipped');
+      updateCardCount();
+    }
+
+    function updateCardCount() {
+      const count = flashcards.length;
+      const current = count > 0 ? currentCardIndex + 1 : 0;
+      cardCountSpan.textContent = `${current}/${count}`;
+    }
+
+    function handleAddCard() {
+      const frontText = frontInput.value.trim();
+      const backText = backInput.value.trim();
+      if (!frontText || !backText) {
+        alert("Please enter text for both sides!");
+        return;
+      }
+      flashcards.push({ front: frontText, back: backText });
+      saveFlashcards();
+      currentCardIndex = flashcards.length - 1;
+      displayCard();
+      frontInput.value = '';
+      backInput.value = '';
+    }
+
+    function handleNextCard() {
+      if (flashcards.length > 1) {
+        currentCardIndex = (currentCardIndex + 1) % flashcards.length;
+        displayCard();
+      }
+    }
+
+    function handlePrevCard() {
+      if (flashcards.length > 1) {
+        currentCardIndex = (currentCardIndex - 1 + flashcards.length) % flashcards.length;
+        displayCard();
+      }
+    }
+
+    function handleDeleteCard() {
+      if (flashcards.length === 0) return;
+      flashcards.splice(currentCardIndex, 1);
+      saveFlashcards();
+      if (flashcards.length === 0) {
+        displayEmptyCard();
+        currentCardIndex = 0;
+      } else {
+        currentCardIndex = Math.min(currentCardIndex, flashcards.length - 1);
+        displayCard();
+      }
+    }
+
+    function toggleFullscreen(force = null) {
+      isFullscreen = force !== null ? force : !isFullscreen;
+      if (isFullscreen) {
+        flashcardContainer.classList.add('fullscreen');
+        fullscreenToggle.textContent = "Exit Fullscreen";
+      } else {
+        flashcardContainer.classList.remove('fullscreen');
+        fullscreenToggle.textContent = "Fullscreen";
+      }
+    }
+
+    // Event Listeners
+    flashcard.addEventListener('click', () => {
+      if (flashcards.length > 0) flashcard.classList.toggle('is-flipped');
+    });
+    addCardBtn.addEventListener('click', handleAddCard);
+    nextBtn.addEventListener('click', handleNextCard);
+    prevBtn.addEventListener('click', handlePrevCard);
+    deleteBtn.addEventListener('click', handleDeleteCard);
+    fullscreenToggle.addEventListener('click', () => toggleFullscreen());
+
+    // Auto fullscreen in landscape
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > window.innerHeight) {
+        toggleFullscreen(true);
+      } else {
+        toggleFullscreen(false);
+      }
+    });
+
+    // Initial setup
+    window.addEventListener('load', () => {
+      loadFlashcards();
+      if (window.innerWidth > window.innerHeight) {
+        toggleFullscreen(true);
+      }
+    });
+  </script>
+</body>
+  </html>
